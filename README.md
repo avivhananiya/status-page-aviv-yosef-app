@@ -1,3 +1,6 @@
+> [!CAUTION]
+> This project has been discontinued! Support will end on December 31, 2025.
+
 <div align="center">
     <img alt="Status Page" src="https://cdn.herrtxbias.net/status-page/logo_gray/logo_small.png"></a>
 </div>
