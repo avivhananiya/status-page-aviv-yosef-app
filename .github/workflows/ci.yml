@@ -1,0 +1,140 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: yosef-aviv-status-page-prod
+
+jobs:
+  # -------------------------------------------------------
+  # Job 1: Run tests and linting on every push and PR
+  # -------------------------------------------------------
+  test:
+    name: Test & Lint
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: statuspage
+          POSTGRES_USER: statuspage
+          POSTGRES_PASSWORD: testpass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U statuspage"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        env:
+          DB_HOST: localhost
+          DB_PORT: "5432"
+          DB_NAME: statuspage
+          DB_USER: statuspage
+          DB_PASSWORD: testpass
+          REDIS_HOST: localhost
+          REDIS_PORT: "6379"
+          REDIS_SSL: "False"
+          DJANGO_SETTINGS_MODULE: statuspage.settings
+          DJANGO_SECRET_KEY: ci-test-secret-key-not-for-production
+          ALLOWED_HOSTS: "*"
+        run: python manage.py test
+
+  # -------------------------------------------------------
+  # Job 2: Build ARM image, push to ECR, trigger deployment
+  # Runs only on merge to main (not on PRs)
+  # -------------------------------------------------------
+  build-and-deploy:
+    name: Build & Deploy
+    needs: test
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/arm64
+          push: true
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Update image tag in infra repo
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.INFRA_REPO_TOKEN }}
+          script: |
+            const { data: file } = await github.rest.repos.getContent({
+              owner: 'avivhananiya',
+              repo: 'status-page-aviv-yosef',
+              path: 'k8s/kustomization.yaml',
+              ref: 'main'
+            });
+
+            const content = Buffer.from(file.content, 'base64').toString();
+            const updated = content.replace(/newTag: .+/, `newTag: "${context.sha}"`);
+
+            await github.rest.repos.createOrUpdateFileContents({
+              owner: 'avivhananiya',
+              repo: 'status-page-aviv-yosef',
+              path: 'k8s/kustomization.yaml',
+              message: `deploy: update image to ${context.sha.substring(0, 7)}`,
+              content: Buffer.from(updated).toString('base64'),
+              sha: file.sha,
+              branch: 'main'
+            });
