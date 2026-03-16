@@ -1,7 +1,8 @@
 FROM python:3.10-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    STATUS_PAGE_CONFIGURATION=statuspage.configuration_docker
 
 WORKDIR /app
 
