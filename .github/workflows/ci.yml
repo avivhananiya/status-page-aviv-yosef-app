@@ -76,7 +76,7 @@ jobs:
           ALLOWED_HOSTS: "*"
           SITE_URL: "http://localhost"
         working-directory: statuspage
-        run: python manage.py test
+        run: python manage.py test components extras incidents maintenances users utilities metrics subscribers queuing
 
   # -------------------------------------------------------
   # Job 2: Build ARM image, push to ECR, trigger deployment
