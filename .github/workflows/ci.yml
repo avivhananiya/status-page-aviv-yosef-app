@@ -151,17 +151,17 @@ jobs:
             const { data: file } = await github.rest.repos.getContent({
               owner: 'avivhananiya',
               repo: 'status-page-aviv-yosef',
-              path: 'k8s/kustomization.yaml',
+              path: 'k8s/status-page-chart/values.yaml',
               ref: 'main'
             });
 
             const content = Buffer.from(file.content, 'base64').toString();
-            const updated = content.replace(/newTag: .+/, `newTag: "${context.sha}"`);
+            const updated = content.replace(/tag: .+/, `tag: "${context.sha}"`);
 
             await github.rest.repos.createOrUpdateFileContents({
               owner: 'avivhananiya',
               repo: 'status-page-aviv-yosef',
-              path: 'k8s/kustomization.yaml',
+              path: 'k8s/status-page-chart/values.yaml',
               message: `deploy: update image to ${context.sha.substring(0, 7)}`,
               content: Buffer.from(updated).toString('base64'),
               sha: file.sha,
