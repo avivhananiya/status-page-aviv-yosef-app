@@ -281,7 +281,7 @@ X_FRAME_OPTIONS = 'SAMEORIGIN'
 # https://docs.djangoproject.com/en/4.1/howto/static-files/
 
 STATIC_ROOT = BASE_DIR + '/static'
-STATIC_URL = f'/{BASE_PATH}static/'
+STATIC_URL = getattr(configuration, 'STATIC_URL', f'/{BASE_PATH}static/')
 STATICFILES_DIRS = (
     os.path.join(BASE_DIR, 'project-static', 'dist'),
     os.path.join(BASE_DIR, 'project-static', 'img'),

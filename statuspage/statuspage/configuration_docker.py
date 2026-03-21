@@ -64,6 +64,8 @@ SITE_URL = os.environ.get('SITE_URL', '').strip()
 
 BASE_PATH = os.environ.get('BASE_PATH', '')
 
+STATIC_URL = os.environ.get('STATIC_URL', '/static/')
+
 DEBUG = os.environ.get('DEBUG', 'False').lower() in ('true', '1', 'yes')
 
 LOGIN_TIMEOUT = int(os.environ.get('LOGIN_TIMEOUT', '1209600'))
