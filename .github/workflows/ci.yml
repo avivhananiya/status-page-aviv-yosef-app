@@ -124,23 +124,13 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: pip
-
-      - name: Collect static files
-        env:
-          DJANGO_SECRET_KEY: ci-build-key
-          STATUS_PAGE_CONFIGURATION: statuspage.configuration_docker
-          DJANGO_SETTINGS_MODULE: statuspage.settings
-          ALLOWED_HOSTS: "*"
-          SITE_URL: "http://localhost"
-        working-directory: statuspage
+      - name: Extract static files from image
         run: |
-          pip install -r ../requirements.txt
-          python manage.py collectstatic --noinput
+          IMAGE="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}"
+          docker pull --platform linux/arm64 "$IMAGE"
+          CONTAINER=$(docker create --platform linux/arm64 "$IMAGE")
+          docker cp "$CONTAINER":/app/static statuspage/static
+          docker rm "$CONTAINER"
 
       - name: Get S3 Bucket Name from AWS SSM
         run: |
