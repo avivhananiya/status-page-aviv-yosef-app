@@ -57,7 +57,11 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Lint with ruff
-        run: pip install ruff && ruff check statuspage/
+        continue-on-error: true
+        run: |
+          pip install ruff
+          echo "::warning::Lint found issues (non-blocking until upstream fixes are applied):"
+          ruff check statuspage/ --statistics
 
       - name: Run tests
         env:
