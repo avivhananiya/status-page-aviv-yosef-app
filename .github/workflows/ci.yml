@@ -50,7 +50,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.12"
           cache: pip
 
       - name: Install dependencies
@@ -58,7 +58,10 @@ jobs:
 
       - name: Lint with ruff
         continue-on-error: true
-        run: pip install ruff && ruff check statuspage/
+        run: |
+          pip install ruff
+          echo "::warning::Lint found issues (non-blocking until upstream fixes are applied):"
+          ruff check statuspage/ --statistics
 
       - name: Run tests
         env:
@@ -124,7 +127,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.12"
           cache: pip
 
       - name: Collect static files
