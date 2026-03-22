@@ -38,6 +38,13 @@ COPY --from=builder /install /usr/local
 # Copy application code
 COPY statuspage/ .
 
+# Collect static files at build time (no DB/Redis needed)
+RUN DJANGO_SECRET_KEY=build-only-key \
+    DJANGO_SETTINGS_MODULE=statuspage.settings \
+    ALLOWED_HOSTS="*" \
+    SITE_URL="http://localhost" \
+    python manage.py collectstatic --noinput
+
 # Non-root user
 RUN useradd -m -u 1000 status-page && \
     chown -R status-page:status-page /app
